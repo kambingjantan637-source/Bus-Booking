@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Booking Kursi Bus</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #222;
+    color: #fff;
+  }
+  .bus-layout {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    gap: 60px; /* lorong bus */
+  }
+  .column {
+    display: grid;
+    grid-template-columns: repeat(2, 50px);
+    grid-gap: 10px;
+  }
+  .column-right {
+    display: grid;
+    grid-template-columns: repeat(3, 50px);
+    grid-gap: 10px;
+  }
+  .seat {
+    width: 50px;
+    height: 50px;
+    background: #28a745;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+  }
+  .seat.selected { background: #007bff; }
+  .seat.booked { background: #dc3545; cursor: not-allowed; }
+  .info { margin: 20px; }
+  .btn {
+    padding: 10px 20px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  input {
+    margin: 10px;
+    padding: 8px;
+    width: 200px;
+  }
+</style>
+</head>
+<body>
+  <h1>Booking Kursi Bus</h1>
+  <div class="bus-layout">
+    <div class="column" id="left-side"></div>
+    <div class="column-right" id="right-side"></div>
+  </div>
+  
+  <div class="info">
+    <p>Kursi dipilih: <span id="selected-seats">0</span></p>
+    <p>Total harga: Rp <span id="total-price">0</span></p>
+    <input type="text" id="name" placeholder="Nama" required>
+    <input type="text" id="phone" placeholder="Nomor HP" required>
+    <br><br>
+    <button class="btn" onclick="submitBooking()">Pesan Sekarang</button>
+  </div>
+
+<script>
+const rows = ['A','B','C','D','E','F','G','H','I','J','K','L','M'];
+const leftSide = document.getElementById('left-side');
+const rightSide = document.getElementById('right-side');
+const pricePerSeat = 0;
+let selectedSeats = [];
+let bookedSeats = [];
+
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzte7y0bhHjXcCjf9IDQ4vpw-UieHfibtPCP2KGzJ2IPzYeDahxFMvLyuxlxlyhVk-A/exec"; // Ganti dengan URL Google Apps Script Web App
+
+async function loadBookedSeats() {
+  try {
+    const response = await fetch(WEB_APP_URL);
+    bookedSeats = await response.json();
+    renderSeats();
+  } catch (err) {
+    console.error('Gagal ambil data kursi:', err);
+  }
+}
+
+function renderSeats() {
+  leftSide.innerHTML = '';
+  rightSide.innerHTML = '';
+  rows.forEach(row => {
+    for(let i=1; i<=2; i++) {
+      createSeat(row+i, leftSide);
+    }
+    for(let i=3; i<=5; i++) {
+      createSeat(row+i, rightSide);
+    }
+  });
+}
+
+function createSeat(seatId, container) {
+  const seat = document.createElement('div');
+  seat.classList.add('seat');
+  seat.innerText = seatId;
+  seat.dataset.seat = seatId;
+  
+  if(bookedSeats.includes(seatId)) {
+    seat.classList.add('booked');
+  } else {
+    seat.addEventListener('click', () => selectSeat(seat));
+  }
+  container.appendChild(seat);
+}
+
+function selectSeat(seat) {
+  if(seat.classList.contains('selected')) {
+    seat.classList.remove('selected');
+    selectedSeats = selectedSeats.filter(s => s !== seat.dataset.seat);
+  } else {
+    seat.classList.add('selected');
+    selectedSeats.push(seat.dataset.seat);
+  }
+  document.getElementById('selected-seats').innerText = selectedSeats.length;
+  document.getElementById('total-price').innerText = selectedSeats.length * pricePerSeat;
+}
+
+async function submitBooking() {
+  const name = document.getElementById('name').value;
+  const phone = document.getElementById('phone').value;
+  if(!name || !phone || selectedSeats.length === 0) {
+    alert('Isi nama, nomor HP, dan pilih kursi!');
+    return;
+  }
+
+  const data = { name, phone, seats: selectedSeats };
+
+  try {
+    const response = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await response.json();
+
+    if(result.status === 'success') {
+      alert('Booking berhasil!');
+      selectedSeats = [];
+      loadBookedSeats(); // refresh kursi
+    } else if(result.status === 'failed') {
+      alert(`Gagal booking! Kursi berikut sudah dipesan: ${result.bookedSeats.join(', ')}`);
+      selectedSeats = [];
+      loadBookedSeats();
+    } else {
+      alert('Gagal booking!');
+    }
+  } catch(err) {
+    console.error(err);
+    alert('Terjadi kesalahan!');
+  }
+}
+
+loadBookedSeats();
+</script>
+</body>
+</html>
