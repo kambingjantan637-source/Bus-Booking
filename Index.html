@@ -10,12 +10,18 @@
     text-align: center;
     background: #222;
     color: #fff;
+    margin: 0;
+    padding: 0;
+  }
+  h1 {
+    margin-top: 20px;
   }
   .bus-layout {
     display: flex;
     justify-content: center;
     margin-top: 20px;
     gap: 60px; /* lorong bus */
+    flex-wrap: wrap;
   }
   .column {
     display: grid;
@@ -38,9 +44,25 @@
     justify-content: center;
     color: white;
     font-weight: bold;
+    position: relative;
+    transition: transform 0.2s;
   }
-  .seat.selected { background: #007bff; }
-  .seat.booked { background: #dc3545; cursor: not-allowed; }
+  .seat:hover {
+    transform: scale(1.1);
+  }
+  .seat.selected {
+    background: #007bff;
+  }
+  .seat.booked {
+    background: #dc3545;
+    cursor: not-allowed;
+  }
+  .seat.booked::after {
+    content: "✕";
+    color: white;
+    font-size: 20px;
+    position: absolute;
+  }
   .info { margin: 20px; }
   .btn {
     padding: 10px 20px;
@@ -75,14 +97,14 @@
   </div>
 
 <script>
-const rows = ['A','B','C','D','E','F','G','H','I','J','K','L','M'];
+const totalSeats = 64;
 const leftSide = document.getElementById('left-side');
 const rightSide = document.getElementById('right-side');
-const pricePerSeat = 0;
+const pricePerSeat = 50000;
 let selectedSeats = [];
 let bookedSeats = [];
 
-const WEB_APP_URL = "https://script.google.com/macros/library/d/12zAmcD7Bx71nefH8oLuarme10Hygl_9-34iTmFrvLyLfC2XpYeOfmMWr/1"; // Ganti dengan URL Google Apps Script Web App
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzte7y0bhHjXcCjf9IDQ4vpw-UieHfibtPCP2KGzJ2IPzYeDahxFMvLyuxlxlyhVk-A/exec";
 
 async function loadBookedSeats() {
   try {
@@ -97,14 +119,14 @@ async function loadBookedSeats() {
 function renderSeats() {
   leftSide.innerHTML = '';
   rightSide.innerHTML = '';
-  rows.forEach(row => {
-    for(let i=1; i<=2; i++) {
-      createSeat(row+i, leftSide);
+
+  for(let i=1; i<=totalSeats; i++) {
+    if(i % 5 === 1 || i % 5 === 2) {
+      createSeat(i, leftSide);
+    } else {
+      createSeat(i, rightSide);
     }
-    for(let i=3; i<=5; i++) {
-      createSeat(row+i, rightSide);
-    }
-  });
+  }
 }
 
 function createSeat(seatId, container) {
@@ -113,7 +135,7 @@ function createSeat(seatId, container) {
   seat.innerText = seatId;
   seat.dataset.seat = seatId;
   
-  if(bookedSeats.includes(seatId)) {
+  if(bookedSeats.includes(seatId.toString())) {
     seat.classList.add('booked');
   } else {
     seat.addEventListener('click', () => selectSeat(seat));
@@ -130,12 +152,12 @@ function selectSeat(seat) {
     selectedSeats.push(seat.dataset.seat);
   }
   document.getElementById('selected-seats').innerText = selectedSeats.length;
-  document.getElementById('total-price').innerText = selectedSeats.length * pricePerSeat;
+  document.getElementById('total-price').innerText = (selectedSeats.length * pricePerSeat).toLocaleString();
 }
 
 async function submitBooking() {
-  const name = document.getElementById('name').value;
-  const phone = document.getElementById('phone').value;
+  const name = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
   if(!name || !phone || selectedSeats.length === 0) {
     alert('Isi nama, nomor HP, dan pilih kursi!');
     return;
@@ -155,7 +177,7 @@ async function submitBooking() {
     if(result.status === 'success') {
       alert('Booking berhasil!');
       selectedSeats = [];
-      loadBookedSeats(); // refresh kursi
+      loadBookedSeats();
     } else if(result.status === 'failed') {
       alert(`Gagal booking! Kursi berikut sudah dipesan: ${result.bookedSeats.join(', ')}`);
       selectedSeats = [];
